@@ -4893,6 +4893,7 @@ dependencies = [
  "clashmap",
  "compute_api",
  "consumption_metrics",
+ "criterion",
  "ecdsa 0.16.9",
  "ed25519-dalek",
  "env_logger 0.10.2",

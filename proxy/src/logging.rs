@@ -149,11 +149,11 @@ impl LogFormat {
     }
 }
 
-trait MakeWriter {
+pub trait MakeWriter {
     fn make_writer(&self) -> impl io::Write;
 }
 
-struct StderrWriter {
+pub struct StderrWriter {
     stderr: io::Stderr,
 }
 
@@ -165,11 +165,11 @@ impl MakeWriter for StderrWriter {
 }
 
 // TODO: move into separate module or even separate crate.
-trait Clock {
+pub trait Clock {
     fn now(&self) -> DateTime<Utc>;
 }
 
-struct RealClock;
+pub struct RealClock;
 
 impl Clock for RealClock {
     #[inline]
@@ -192,10 +192,32 @@ thread_local! {
 }
 
 /// Implements tracing layer to handle events specific to logging.
-struct JsonLoggingLayer<C: Clock, W: MakeWriter> {
+pub struct JsonLoggingLayer<C: Clock, W: MakeWriter> {
     clock: C,
     skipped_field_indices: papaya::HashMap<callsite::Identifier, SkippedFieldIndices>,
     writer: W,
+}
+
+impl<W: MakeWriter> JsonLoggingLayer<RealClock, W> {
+    pub fn new(writer: W) -> Self {
+        JsonLoggingLayer {
+            clock: RealClock,
+            skipped_field_indices: papaya::HashMap::default(),
+            writer,
+        }
+    }
+}
+
+impl Default for JsonLoggingLayer<RealClock, StderrWriter> {
+    fn default() -> Self {
+        JsonLoggingLayer {
+            clock: RealClock,
+            skipped_field_indices: papaya::HashMap::default(),
+            writer: StderrWriter {
+                stderr: std::io::stderr(),
+            },
+        }
+    }
 }
 
 impl<S, C: Clock + 'static, W: MakeWriter + 'static> Layer<S> for JsonLoggingLayer<C, W>
