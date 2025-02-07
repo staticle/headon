@@ -487,6 +487,7 @@ impl PageServerConf {
             metric_collection_interval: Duration::from_secs(60),
             synthetic_size_calculation_interval: Duration::from_secs(60),
             background_task_maximum_delay: Duration::ZERO,
+            control_plane_api: Some(Url::parse("http://localhost:6666").unwrap()),
             ..Default::default()
         };
         PageServerConf::parse_and_validate(NodeId(0), config_toml, &repo_dir).unwrap()
@@ -556,9 +557,12 @@ mod tests {
     use super::PageServerConf;
 
     #[test]
-    fn test_empty_config_toml_is_valid() {
-        // we use Default impl of everything in this situation
+    fn test_minimal_config_toml_is_valid() {
+        // The minimal valid config for running a pageserver:
+        // - control_plane_api is mandatory, as pageservers cannotrun in isolation
+        // - we use Default impl of everything else in this situation
         let input = r#"
+            control_plane_api = "http://localhost:6666"
         "#;
         let config_toml = toml_edit::de::from_str::<pageserver_api::config::ConfigToml>(input)
             .expect("empty config is valid");
