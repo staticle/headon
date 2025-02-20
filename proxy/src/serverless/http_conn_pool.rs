@@ -6,7 +6,7 @@ use hyper::client::conn::http2;
 use hyper_util::rt::{TokioExecutor, TokioIo};
 use parking_lot::RwLock;
 use tokio::net::TcpStream;
-use tracing::{debug, error, info, info_span, Instrument};
+use tracing::{Instrument, debug, error, info, info_span};
 
 use super::backend::HttpConnError;
 use super::conn_pool_lib::{

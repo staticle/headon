@@ -269,7 +269,9 @@ fn log_panic_to_stderr(
     location: Option<PrettyLocation<'_, '_>>,
     backtrace: &std::backtrace::Backtrace,
 ) {
-    eprintln!("panic while tracing is unconfigured: thread '{thread}' panicked at '{msg}', {location:?}\nStack backtrace:\n{backtrace}");
+    eprintln!(
+        "panic while tracing is unconfigured: thread '{thread}' panicked at '{msg}', {location:?}\nStack backtrace:\n{backtrace}"
+    );
 }
 
 struct PrettyLocation<'a, 'b>(&'a std::panic::Location<'b>);
@@ -320,7 +322,7 @@ impl std::fmt::Debug for SecretString {
 
 #[cfg(test)]
 mod tests {
-    use metrics::{core::Opts, IntCounterVec};
+    use metrics::{IntCounterVec, core::Opts};
 
     use crate::logging::{TracingEventCountLayer, TracingEventCountMetric};
 

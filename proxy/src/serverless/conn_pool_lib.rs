@@ -9,7 +9,7 @@ use clashmap::ClashMap;
 use parking_lot::RwLock;
 use postgres_client::ReadyForQueryStatus;
 use rand::Rng;
-use tracing::{debug, info, Span};
+use tracing::{Span, debug, info};
 
 use super::backend::HttpConnError;
 use super::conn_pool::ClientDataRemote;
@@ -473,7 +473,9 @@ where
                 .http_pool_opened_connections
                 .get_metric()
                 .dec_by(clients_removed as i64);
-            info!("pool: performed global pool gc. removed {clients_removed} clients, total number of clients in pool is {size}");
+            info!(
+                "pool: performed global pool gc. removed {clients_removed} clients, total number of clients in pool is {size}"
+            );
         }
         let removed = current_len - new_len;
 
@@ -700,7 +702,9 @@ impl<C: ClientInnerExt> Discard<'_, C> {
     pub(crate) fn discard(&mut self) {
         let conn_info = &self.conn_info;
         if std::mem::take(self.pool).strong_count() > 0 {
-            info!("pool: throwing away connection '{conn_info}' because connection is potentially in a broken state");
+            info!(
+                "pool: throwing away connection '{conn_info}' because connection is potentially in a broken state"
+            );
         }
     }
 }

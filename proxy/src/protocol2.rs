@@ -193,7 +193,7 @@ fn process_proxy_payload(
             return Err(io::Error::new(
                 io::ErrorKind::Other,
                 "invalid proxy protocol address family/transport protocol.",
-            ))
+            ));
         }
     };
 
@@ -401,7 +401,7 @@ mod tests {
     use tokio::io::AsyncReadExt;
 
     use crate::protocol2::{
-        read_proxy_protocol, ConnectHeader, LOCAL_V2, PROXY_V2, TCP_OVER_IPV4, UDP_OVER_IPV6,
+        ConnectHeader, LOCAL_V2, PROXY_V2, TCP_OVER_IPV4, UDP_OVER_IPV6, read_proxy_protocol,
     };
 
     #[tokio::test]
