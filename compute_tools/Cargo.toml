@@ -44,8 +44,12 @@ tar.workspace = true
 tower.workspace = true
 tower-http.workspace = true
 reqwest = { workspace = true, features = ["json"] }
+ring = "0.17"
+rustls.workspace = true
+rustls-pemfile.workspace = true
 tokio = { workspace = true, features = ["rt", "rt-multi-thread"] }
 tokio-postgres.workspace = true
+tokio-rustls.workspace = true
 tokio-util.workspace = true
 tokio-stream.workspace = true
 tower-otel.workspace = true

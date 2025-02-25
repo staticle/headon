@@ -6,6 +6,7 @@ use std::io::prelude::*;
 use std::path::Path;
 
 use anyhow::Result;
+use compute_api::responses::TlsConfig;
 use compute_api::spec::{ComputeMode, ComputeSpec, GenericOption};
 
 use crate::pg_helpers::{GenericOptionExt, PgOptionsSerialize, escape_conf_value};
@@ -39,6 +40,7 @@ pub fn write_postgres_conf(
     path: &Path,
     spec: &ComputeSpec,
     extension_server_port: u16,
+    tls_config: &Option<TlsConfig>,
 ) -> Result<()> {
     // File::create() destroys the file content if it exists.
     let mut file = File::create(path)?;
@@ -82,6 +84,13 @@ pub fn write_postgres_conf(
             "neon.timeline_id={}",
             escape_conf_value(&s.to_string())
         )?;
+    }
+
+    // tls
+    if let Some(tls_config) = tls_config {
+        writeln!(file, "ssl = on")?;
+        writeln!(file, "ssl_cert_file = '{}'", tls_config.cert_path)?;
+        writeln!(file, "ssl_key_file = '{}'", tls_config.key_path)?;
     }
 
     // Locales
