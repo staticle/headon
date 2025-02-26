@@ -158,6 +158,9 @@ pub enum ComputeFeature {
     /// Pre-install and initialize anon extension for every database in the cluster
     AnonExtension,
 
+	/// Download larger SLU files on demand 
+	LazySlruDownload,
+
     /// This is a special feature flag that is used to represent unknown feature flags.
     /// Basically all unknown to enum flags are represented as this one. See unit test
     /// `parse_unknown_features()` for more details.

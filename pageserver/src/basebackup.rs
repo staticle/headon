@@ -59,6 +59,7 @@ pub async fn send_basebackup_tarball<'a, W>(
     prev_lsn: Option<Lsn>,
     full_backup: bool,
     replica: bool,
+    lazy_slru_download: bool,
     ctx: &'a RequestContext,
 ) -> Result<(), BasebackupError>
 where
@@ -110,8 +111,8 @@ where
     };
 
     info!(
-        "taking basebackup lsn={}, prev_lsn={} (full_backup={}, replica={})",
-        backup_lsn, prev_lsn, full_backup, replica
+        "taking basebackup lsn={}, prev_lsn={} (full_backup={}, replica={}, lazy_slru_download={})",
+        backup_lsn, prev_lsn, full_backup, replica, lazy_slru_download
     );
 
     let basebackup = Basebackup {
@@ -121,6 +122,7 @@ where
         prev_record_lsn: prev_lsn,
         full_backup,
         replica,
+		lazy_slru_dpownload,
         ctx,
         io_concurrency: IoConcurrency::spawn_from_conf(
             timeline.conf,
@@ -149,6 +151,7 @@ where
     prev_record_lsn: Lsn,
     full_backup: bool,
     replica: bool,
+	lazy_slru_download: bool,
     ctx: &'a RequestContext,
     io_concurrency: IoConcurrency,
 }
@@ -287,7 +290,7 @@ where
                 self.timeline.pg_version,
             )?;
 
-        let lazy_slru_download = self.timeline.get_lazy_slru_download() && !self.full_backup;
+        let lazy_slru_download = (self.self.lazy_slru_download || timeline.get_lazy_slru_download()) && !self.full_backup;
 
         let pgversion = self.timeline.pg_version;
         let subdirs = dispatch_pgversion!(pgversion, &pgv::bindings::PGDATA_SUBDIRS[..]);
