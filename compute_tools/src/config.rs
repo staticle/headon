@@ -10,6 +10,7 @@ use compute_api::responses::TlsConfig;
 use compute_api::spec::{ComputeMode, ComputeSpec, GenericOption};
 
 use crate::pg_helpers::{GenericOptionExt, PgOptionsSerialize, escape_conf_value};
+use crate::tls::SERVER_KEY;
 
 /// Check that `line` is inside a text file and put it there if it is not.
 /// Create file if it doesn't exist.
@@ -90,7 +91,7 @@ pub fn write_postgres_conf(
     if let Some(tls_config) = tls_config {
         writeln!(file, "ssl = on")?;
         writeln!(file, "ssl_cert_file = '{}'", tls_config.cert_path)?;
-        writeln!(file, "ssl_key_file = '{}'", tls_config.key_path)?;
+        writeln!(file, "ssl_key_file = '{}'", SERVER_KEY)?;
     }
 
     // Locales
