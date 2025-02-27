@@ -278,6 +278,11 @@ pub struct Timeline {
     // them yet.
     disk_consistent_lsn: AtomicLsn,
 
+    //
+    // Flag indicating that SLRU for this timeline should be loaded on demand rathert than included in basesbackup
+    //
+    lazy_slru_download: AtomicBool,
+
     // Parent timeline that this timeline was branched from, and the LSN
     // of the branch point.
     ancestor_timeline: Option<Arc<Timeline>>,
@@ -2320,11 +2325,19 @@ impl Timeline {
     }
 
     pub(crate) fn get_lazy_slru_download(&self) -> bool {
+        if self.lazy_slru_download.load(AtomicOrdering::Relaxed) {
+            return true;
+        }
         let tenant_conf = self.tenant_conf.load();
         tenant_conf
             .tenant_conf
             .lazy_slru_download
             .unwrap_or(self.conf.default_tenant_conf.lazy_slru_download)
+    }
+
+    pub(crate) fn set_lazy_slru_download(&self, enabled: bool) {
+        self.lazy_slru_download
+            .store(enabled, AtomicOrdering::Relaxed);
     }
 
     fn get_checkpoint_distance(&self) -> u64 {
@@ -2691,6 +2704,7 @@ impl Timeline {
                     prev: metadata.prev_record_lsn().unwrap_or(Lsn(0)),
                 }),
                 disk_consistent_lsn: AtomicLsn::new(disk_consistent_lsn.0),
+                lazy_slru_download: AtomicBool::new(false),
 
                 gc_compaction_state: ArcSwap::new(Arc::new(gc_compaction_state)),
 

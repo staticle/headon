@@ -123,6 +123,7 @@ pub struct ConfigToml {
     pub enable_read_path_debugging: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub validate_wal_contiguity: Option<bool>,
+    pub lazy_slru_download_threshold: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -417,6 +418,8 @@ pub mod defaults {
 
     pub const DEFAULT_WAL_RECEIVER_PROTOCOL: utils::postgres_client::PostgresClientProtocol =
         utils::postgres_client::PostgresClientProtocol::Vanilla;
+
+    pub const DEFAULT_LAZY_SLRU_DOWNLOAD_THRESHOLD: usize = 128;
 }
 
 impl Default for ConfigToml {
@@ -523,6 +526,7 @@ impl Default for ConfigToml {
                 None
             },
             validate_wal_contiguity: None,
+            lazy_slru_download_threshold: DEFAULT_LAZY_SLRU_DOWNLOAD_THRESHOLD,
         }
     }
 }
