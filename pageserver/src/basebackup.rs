@@ -290,7 +290,7 @@ where
                 self.timeline.pg_version,
             )?;
 
-        let lazy_slru_download = self.lazy_slru_download_enabled
+        let mut lazy_slru_download = self.lazy_slru_download_enabled
             && self.timeline.get_lazy_slru_download()
             && !self.full_backup;
 
@@ -345,7 +345,7 @@ where
                     .map_err(|e| BasebackupError::Server(e.into()))?;
 
                 if blocks.len() > self.timeline.conf.lazy_slru_download_threshold {
-                    self.timeline.set_lazy_slru_download(true);
+                    lazy_slru_download = true;
                 }
 
                 for (key, block) in blocks {
@@ -354,6 +354,7 @@ where
                 }
             }
             slru_builder.finish().await?;
+            self.timeline.set_lazy_slru_download(lazy_slru_download);
         }
 
         let mut min_restart_lsn: Lsn = Lsn::MAX;
