@@ -158,7 +158,7 @@ pub enum ComputeFeature {
     /// Pre-install and initialize anon extension for every database in the cluster
     AnonExtension,
 
-    /// Download larger SLU files on demand
+    /// Download all SLRU files on demand
     LazySlruDownload,
 
     /// This is a special feature flag that is used to represent unknown feature flags.
