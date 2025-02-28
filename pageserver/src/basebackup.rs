@@ -52,6 +52,7 @@ pub enum BasebackupError {
 ///  * When working without safekeepers. In this situation it is important to match the lsn
 ///    we are taking basebackup on with the lsn that is used in pageserver's walreceiver
 ///    to start the replication.
+#[allow(clippy::too_many_arguments)]
 pub async fn send_basebackup_tarball<'a, W>(
     write: &'a mut W,
     timeline: &'a Timeline,
@@ -262,7 +263,6 @@ impl<W> Basebackup<'_, W>
 where
     W: AsyncWrite + Send + Sync + Unpin,
 {
-    #[allow(clippy::too_many_arguments)]
     async fn send_tarball(mut self) -> Result<(), BasebackupError> {
         // TODO include checksum
 
