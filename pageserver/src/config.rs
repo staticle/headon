@@ -194,11 +194,6 @@ pub struct PageServerConf {
     /// Interpreted protocol feature: if enabled, validate that the logical WAL received from
     /// safekeepers does not have gaps.
     pub validate_wal_contiguity: bool,
-
-    ///
-    /// Size of SLRU object in blocks which triggers on-demand download rarther than including it in basebackup
-    ///
-    pub lazy_slru_download_threshold: usize,
 }
 
 /// Token for authentication to safekeepers
@@ -363,7 +358,6 @@ impl PageServerConf {
             get_vectored_concurrent_io,
             enable_read_path_debugging,
             validate_wal_contiguity,
-            lazy_slru_download_threshold,
         } = config_toml;
 
         let mut conf = PageServerConf {
@@ -453,7 +447,6 @@ impl PageServerConf {
             no_sync: no_sync.unwrap_or(false),
             enable_read_path_debugging: enable_read_path_debugging.unwrap_or(false),
             validate_wal_contiguity: validate_wal_contiguity.unwrap_or(false),
-            lazy_slru_download_threshold,
         };
 
         // ------------------------------------------------------------
