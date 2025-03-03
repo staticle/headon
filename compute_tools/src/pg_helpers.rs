@@ -456,21 +456,6 @@ pub async fn tune_pgbouncer(
         pgbouncer_config.insert("client_tls_sslmode".to_string(), "allow".to_string());
     }
 
-    // Apply new config
-    for (option_name, value) in pgbouncer_config.iter() {
-        let query = format!("SET {}={}", option_name, escape_literal(value));
-        // keep this log line for debugging purposes
-        info!("Applying pgbouncer setting change: {}", query);
-
-        if let Err(err) = client.simple_query(&query).await {
-            // Don't fail on error, just print it into log
-            error!(
-                "Failed to apply pgbouncer setting change: {},  {}",
-                query, err
-            );
-        };
-    }
-
     // save values to pgbouncer.ini
     // so that they are preserved after pgbouncer restart
     let pgbouncer_ini_path = if std::env::var_os("AUTOSCALING").is_some() {
@@ -483,6 +468,13 @@ pub async fn tune_pgbouncer(
         "/var/db/postgres/pgbouncer/pgbouncer.ini".to_string()
     };
     update_pgbouncer_ini(pgbouncer_config, &pgbouncer_ini_path)?;
+
+    info!("Applying pgbouncer setting change");
+
+    if let Err(err) = client.simple_query("RELOAD").await {
+        // Don't fail on error, just print it into log
+        error!("Failed to apply pgbouncer setting change,  {err}",);
+    };
 
     Ok(())
 }
