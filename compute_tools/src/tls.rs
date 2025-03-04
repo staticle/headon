@@ -1,8 +1,7 @@
-use std::{path::Path, time::Duration};
+use std::{io::Write, os::unix::fs::OpenOptionsExt, path::Path, time::Duration};
 
 use anyhow::Result;
 use ring::digest;
-use tokio::io::AsyncWriteExt;
 
 #[derive(Clone, Copy)]
 pub struct CertDigest(digest::Digest);
@@ -18,7 +17,7 @@ pub async fn watch_cert_for_changes(cert_path: String) -> tokio::sync::watch::Re
                 _ = tx.send(digest);
             }
 
-            tokio::time::sleep(Duration::from_secs(60 * 15)).await
+            tokio::time::sleep(Duration::from_secs(60)).await
         }
     });
     rx
@@ -42,13 +41,13 @@ async fn try_compute_digest(cert_path: &str) -> Result<CertDigest> {
     Ok(CertDigest(digest::digest(&digest::SHA256, &data)))
 }
 
-pub async fn update_key_path(pg_data: &Path, key_path: &str) {
+pub fn update_key_path_blocking(pg_data: &Path, key_path: &str) {
     loop {
-        match try_update_key_path(pg_data, key_path).await {
+        match try_update_key_path_blocking(pg_data, key_path) {
             Ok(()) => break,
             Err(e) => {
                 tracing::error!("could not create key file {e:?}");
-                tokio::time::sleep(Duration::from_secs(1)).await
+                std::thread::sleep(Duration::from_secs(1))
             }
         }
     }
@@ -59,17 +58,16 @@ pub const SERVER_KEY: &str = "server.key";
 // Postgres requires the keypath be "secure". This means
 // 1. Owned by the postgres user.
 // 2. Have permission 600.
-async fn try_update_key_path(pg_data: &Path, key_path: &str) -> Result<()> {
-    let mut file = tokio::fs::OpenOptions::new()
+fn try_update_key_path_blocking(pg_data: &Path, key_path: &str) -> Result<()> {
+    let mut file = std::fs::OpenOptions::new()
         .write(true)
         .create(true)
         .truncate(true)
         .mode(0o600)
-        .open(pg_data.join(SERVER_KEY))
-        .await?;
+        .open(pg_data.join(SERVER_KEY))?;
 
-    let data = tokio::fs::read(key_path).await?;
-    file.write_all(&data).await?;
+    let data = std::fs::read(key_path)?;
+    file.write_all(&data)?;
 
     Ok(())
 }

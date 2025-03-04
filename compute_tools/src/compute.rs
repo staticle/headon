@@ -38,7 +38,7 @@ use crate::pg_helpers::*;
 use crate::spec::*;
 use crate::swap::resize_swap;
 use crate::sync_sk::{check_if_synced, ping_safekeeper};
-use crate::tls::{update_key_path, watch_cert_for_changes};
+use crate::tls::{update_key_path_blocking, watch_cert_for_changes};
 use crate::{config, extension_server, local_proxy};
 
 pub static SYNC_SAFEKEEPERS_PID: AtomicU32 = AtomicU32::new(0);
@@ -1659,43 +1659,44 @@ impl ComputeNode {
             let compute = self.clone();
             let tls_config = tls_config.clone();
             let pg_data = PathBuf::from(&self.params.pgdata);
-            tokio::spawn(async move {
-                let mut cert_watch = watch_cert_for_changes(tls_config.cert_path).await;
+            tokio::task::spawn_blocking(move || {
+                let handle = tokio::runtime::Handle::current();
+                let mut cert_watch = handle.block_on(watch_cert_for_changes(tls_config.cert_path));
                 'cert_update: loop {
                     // copy the key to [`SERVER_KEY`] so postgres accepts it.
-                    update_key_path(&pg_data, &tls_config.key_path).await;
+                    update_key_path_blocking(&pg_data, &tls_config.key_path);
 
                     // let postgres/pgbouncer/local_proxy know the new cert/key exists.
+                    // we need to wait until it's configurable first.
+
+                    let mut state = compute.state.lock().unwrap();
                     'status_update: loop {
-                        {
-                            let mut state = compute.state.lock().unwrap();
-                            match state.status {
-                                // let's update the state to config pending
-                                ComputeStatus::ConfigurationPending | ComputeStatus::Running => {
-                                    state.set_status(
-                                        ComputeStatus::ConfigurationPending,
-                                        &compute.state_changed,
-                                    );
-                                    break 'status_update;
-                                }
+                        match state.status {
+                            // let's update the state to config pending
+                            ComputeStatus::ConfigurationPending | ComputeStatus::Running => {
+                                state.set_status(
+                                    ComputeStatus::ConfigurationPending,
+                                    &compute.state_changed,
+                                );
+                                break 'status_update;
+                            }
 
-                                // exit loop
-                                ComputeStatus::Failed
-                                | ComputeStatus::TerminationPending
-                                | ComputeStatus::Terminated => break 'cert_update,
+                            // exit loop
+                            ComputeStatus::Failed
+                            | ComputeStatus::TerminationPending
+                            | ComputeStatus::Terminated => break 'cert_update,
 
-                                // drop the lock and sleep
-                                ComputeStatus::Init
-                                | ComputeStatus::Configuration
-                                | ComputeStatus::Empty => {}
+                            // wait
+                            ComputeStatus::Init
+                            | ComputeStatus::Configuration
+                            | ComputeStatus::Empty => {
+                                state = compute.state_changed.wait(state).unwrap();
                             }
                         }
-
-                        tokio::time::sleep(Duration::from_secs(5)).await;
                     }
 
                     // wait for a new certificate update
-                    if cert_watch.changed().await.is_err() {
+                    if handle.block_on(cert_watch.changed()).is_err() {
                         break;
                     }
                 }
