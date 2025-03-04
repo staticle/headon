@@ -1,6 +1,7 @@
 use std::{io::Write, os::unix::fs::OpenOptionsExt, path::Path, time::Duration};
 
 use anyhow::Result;
+use compute_api::responses::TlsConfig;
 use ring::digest;
 
 #[derive(Clone, Copy)]
@@ -41,9 +42,12 @@ async fn try_compute_digest(cert_path: &str) -> Result<CertDigest> {
     Ok(CertDigest(digest::digest(&digest::SHA256, &data)))
 }
 
-pub fn update_key_path_blocking(pg_data: &Path, key_path: &str) {
+pub const SERVER_CRT: &str = "server.crt";
+pub const SERVER_KEY: &str = "server.key";
+
+pub fn update_key_path_blocking(pg_data: &Path, tls_config: &TlsConfig) {
     loop {
-        match try_update_key_path_blocking(pg_data, key_path) {
+        match try_update_key_path_blocking(pg_data, tls_config) {
             Ok(()) => break,
             Err(e) => {
                 tracing::error!("could not create key file {e:?}");
@@ -53,21 +57,37 @@ pub fn update_key_path_blocking(pg_data: &Path, key_path: &str) {
     }
 }
 
-pub const SERVER_KEY: &str = "server.key";
-
 // Postgres requires the keypath be "secure". This means
 // 1. Owned by the postgres user.
 // 2. Have permission 600.
-fn try_update_key_path_blocking(pg_data: &Path, key_path: &str) -> Result<()> {
-    let mut file = std::fs::OpenOptions::new()
+fn try_update_key_path_blocking(pg_data: &Path, tls_config: &TlsConfig) -> Result<()> {
+    let mut key_file = std::fs::OpenOptions::new()
         .write(true)
         .create(true)
         .truncate(true)
         .mode(0o600)
         .open(pg_data.join(SERVER_KEY))?;
 
-    let data = std::fs::read(key_path)?;
-    file.write_all(&data)?;
+    let mut crt_file = std::fs::OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .mode(0o600)
+        .open(pg_data.join(SERVER_KEY))?;
+
+    // Race condition risk:
+    // 1. key is read
+    // 2. key and crt are updated
+    // 3. crt is read
+    // key does not match crt.
+    // We can either:
+    // 1. Accept this as an unlikely risk (chance to occur every 23 hours).
+    // 2. Parse the certificate and verify that the key matches (seems awkward).
+    let key = std::fs::read(&tls_config.key_path)?;
+    let crt = std::fs::read(&tls_config.cert_path)?;
+
+    key_file.write_all(&key)?;
+    crt_file.write_all(&crt)?;
 
     Ok(())
 }
