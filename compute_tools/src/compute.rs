@@ -1661,23 +1661,28 @@ impl ComputeNode {
             let pg_data = PathBuf::from(&self.params.pgdata);
             tokio::spawn(async move {
                 let mut cert_watch = watch_cert_for_changes(tls_config.cert_path).await;
-                update_key_path(&pg_data, &tls_config.key_path).await;
-                // wait for certificate update
-                while let Ok(()) = cert_watch.changed().await {
+                'cert_update: loop {
+                    // copy the key to [`SERVER_KEY`] so postgres accepts it.
                     update_key_path(&pg_data, &tls_config.key_path).await;
-                    let mut state = loop {
+
+                    // let postgres/pgbouncer/local_proxy know the new cert/key exists.
+                    'status_update: loop {
                         {
-                            let state = compute.state.lock().unwrap();
+                            let mut state = compute.state.lock().unwrap();
                             match state.status {
                                 // let's update the state to config pending
                                 ComputeStatus::ConfigurationPending | ComputeStatus::Running => {
-                                    break state;
+                                    state.set_status(
+                                        ComputeStatus::ConfigurationPending,
+                                        &compute.state_changed,
+                                    );
+                                    break 'status_update;
                                 }
 
                                 // exit loop
                                 ComputeStatus::Failed
                                 | ComputeStatus::TerminationPending
-                                | ComputeStatus::Terminated => return,
+                                | ComputeStatus::Terminated => break 'cert_update,
 
                                 // drop the lock and sleep
                                 ComputeStatus::Init
@@ -1685,11 +1690,14 @@ impl ComputeNode {
                                 | ComputeStatus::Empty => {}
                             }
                         }
-                        tokio::time::sleep(Duration::from_secs(5)).await;
-                    };
 
-                    // tell compute to reload
-                    state.set_status(ComputeStatus::ConfigurationPending, &compute.state_changed);
+                        tokio::time::sleep(Duration::from_secs(5)).await;
+                    }
+
+                    // wait for a new certificate update
+                    if cert_watch.changed().await.is_err() {
+                        break;
+                    }
                 }
             });
         }
