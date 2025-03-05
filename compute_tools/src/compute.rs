@@ -1699,6 +1699,7 @@ impl ComputeNode {
                             }
                         }
                     }
+                    drop(state);
 
                     // wait for a new certificate update
                     if handle.block_on(cert_watch.changed()).is_err() {
