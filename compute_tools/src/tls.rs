@@ -61,6 +61,17 @@ pub fn update_key_path_blocking(pg_data: &Path, tls_config: &TlsConfig) {
 // 1. Owned by the postgres user.
 // 2. Have permission 600.
 fn try_update_key_path_blocking(pg_data: &Path, tls_config: &TlsConfig) -> Result<()> {
+    // Race condition risk:
+    // 1. key is read
+    // 2. key and crt are updated
+    // 3. crt is read
+    // key does not match crt.
+    // We can either:
+    // 1. Accept this as an unlikely risk (chance to occur every 23 hours).
+    // 2. Parse the certificate and verify that the key matches (seems awkward).
+    let key = std::fs::read(&tls_config.key_path)?;
+    let crt = std::fs::read(&tls_config.cert_path)?;
+
     let mut key_file = std::fs::OpenOptions::new()
         .write(true)
         .create(true)
@@ -73,18 +84,7 @@ fn try_update_key_path_blocking(pg_data: &Path, tls_config: &TlsConfig) -> Resul
         .create(true)
         .truncate(true)
         .mode(0o600)
-        .open(pg_data.join(SERVER_KEY))?;
-
-    // Race condition risk:
-    // 1. key is read
-    // 2. key and crt are updated
-    // 3. crt is read
-    // key does not match crt.
-    // We can either:
-    // 1. Accept this as an unlikely risk (chance to occur every 23 hours).
-    // 2. Parse the certificate and verify that the key matches (seems awkward).
-    let key = std::fs::read(&tls_config.key_path)?;
-    let crt = std::fs::read(&tls_config.cert_path)?;
+        .open(pg_data.join(SERVER_CRT))?;
 
     key_file.write_all(&key)?;
     crt_file.write_all(&crt)?;
