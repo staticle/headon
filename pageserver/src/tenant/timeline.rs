@@ -2321,10 +2321,9 @@ impl Timeline {
 
     pub(crate) fn get_lazy_slru_download(&self, lazy_slru_download_enabled_by_cp: bool) -> bool {
         let tenant_conf = self.tenant_conf.load();
-        tenant_conf
-            .tenant_conf
-            .lazy_slru_download
-            .unwrap_or(lazy_slru_download_enabled_by_cp || self.conf.default_tenant_conf.lazy_slru_download)
+        tenant_conf.tenant_conf.lazy_slru_download.unwrap_or(
+            lazy_slru_download_enabled_by_cp || self.conf.default_tenant_conf.lazy_slru_download,
+        )
     }
 
     fn get_checkpoint_distance(&self) -> u64 {
